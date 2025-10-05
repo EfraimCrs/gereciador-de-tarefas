@@ -1,58 +1,102 @@
-// Seleciona os elementos do HTML com os quais vamos interagir
+// =================== SELETORES GLOBAIS ===================
 const listaDeTarefas = document.getElementById('lista-de-tarefas');
-const formulario = document.getElementById('form-nova-tarefa');
+const formNovaTarefa = document.getElementById('form-nova-tarefa');
 const inputNovaTarefa = document.getElementById('input-nova-tarefa');
-
-// Define a URL da nossa API (deve ser a mesma do backend)
 const apiUrl = 'http://localhost:3000/tarefas';
 
-// Função que renderiza a lista de tarefas na tela
+// =================== FUNÇÕES DE RENDERIZAÇÃO E API ===================
+
 function renderizarTarefas(tarefas) {
-    // Limpa a lista antes de renderizar
     listaDeTarefas.innerHTML = '';
-
-    // Itera sobre cada tarefa da API
     tarefas.forEach(tarefa => {
-
-        // Cria um item de lista (li) para cada tarefa
         const itemDaLista = document.createElement('li');
-
-        // Adiciona a classe 'item-tare' ao li
+        itemDaLista.dataset.id = tarefa.id;
         itemDaLista.classList.add('item-tarefa');
-
-        // Se a tarefa estiver concluída, adiciona a classe 'concluida'
         if (tarefa.concluida) {
             itemDaLista.classList.add('concluida');
         }
-
-        // Definir o conteúdo do item da lista
         itemDaLista.innerHTML = `
             <span class="titulo-tarefa">${tarefa.titulo}</span>
-            <button class="btn-concluir">${tarefa.concluida ? 'Desfazer' : 'Concluir'}</button>
-            <button class="btn-excluir">Excluir</button>
+            <button class="btn-delete" data-id="${tarefa.id}">Excluir</button>
         `;
-
-        // Adiciona o li recém-criado à ul na pagina
         listaDeTarefas.appendChild(itemDaLista);
     });
 }
-// Função para buscar as tarefas da API
+
 async function buscarTarefas() {
     try {
-        // Faz uma requisição GET para a API
         const response = await fetch(apiUrl);
-        
-        // Converte a resposta em JSON
         const tarefas = await response.json();
-
-        // Renderiza as tarefas na tela
         renderizarTarefas(tarefas);
-
     } catch (error) {
-        // Em caso de erro, exibe no console
         console.error('Erro ao buscar tarefas:', error);
     }
 }
+
+async function adicionarTarefa(titulo) {
+    try {
+        await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ titulo: titulo }),
+        });
+        buscarTarefas();
+    } catch (error) {
+        console.error('Erro ao adicionar tarefa:', error);
+    }
+}
+
+async function deletarTarefa(id) {
+    try {
+        await fetch(`${apiUrl}/${id}`, {
+            method: 'DELETE',
+        });
+        buscarTarefas();
+    } catch (error) {
+        console.error('Erro ao deletar tarefa:', error);
+    }
+}
+
+async function atualizarTarefa(id, status) {
+    try {
+        await fetch(`${apiUrl}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ concluida: status }),
+        });
+        buscarTarefas();
+    } catch (error) {
+        console.error('Erro ao atualizar tarefa:', error);
+    }
+}
+
+// =================== EVENT LISTENERS ===================
+
+formNovaTarefa.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    const tituloDaTarefa = inputNovaTarefa.value;
+    if (tituloDaTarefa) {
+        adicionarTarefa(tituloDaTarefa);
+        inputNovaTarefa.value = '';
+        inputNovaTarefa.focus();
+    }
+});
+
+listaDeTarefas.addEventListener('click', (evento) => {
+    const elementoClicado = evento.target;
+    
+    if (elementoClicado.classList.contains('btn-delete')) {
+        const idDaTarefa = elementoClicado.dataset.id;
+        deletarTarefa(idDaTarefa);
+    }
+
+    if (elementoClicado.classList.contains('titulo-tarefa')) {
+        const itemDaLista = elementoClicado.parentElement;
+        const idDaTarefa = itemDaLista.dataset.id;
+        const estaConcluida = itemDaLista.classList.contains('concluida');
+        atualizarTarefa(idDaTarefa, !estaConcluida);
+    }
+});
+
 // =================== INICIALIZAÇÃO ===================
-// Chama a função para buscar as tarefas assim que a página carrega
 buscarTarefas();
